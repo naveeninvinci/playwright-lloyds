@@ -9,7 +9,12 @@ export default defineConfig({
     headless: false,
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
+    screenshot: 'only-on-failure', // <- this enables screenshots on failure
     video: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',   // optional: for detailed step tracing
   },
+  reporter: [
+    ['list'], // Keep console output
+    ['allure-playwright'] // Add Allure reporter
+  ],
 });

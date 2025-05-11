@@ -10,20 +10,32 @@ async function navigateToProductAndAddToCart(page) {
 async function proceedToCheckout(page) {
   const checkoutBtn = page.locator('button[data-role="proceed-to-checkout"]');
   await checkoutBtn.scrollIntoViewIfNeeded();
+
   await expect(checkoutBtn).toBeVisible({ timeout: 10000 });
   await expect(checkoutBtn).toBeEnabled({ timeout: 10000 });
 
   try {
-    await checkoutBtn.click({ timeout: 5000 });
-  } catch {
+    // Ensure we wait for navigation after clicking
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }),
+      checkoutBtn.click({ timeout: 5000 }),
+    ]);
+  } catch (e) {
     console.warn('Standard click failed. Trying JS click...');
     const handle = await checkoutBtn.elementHandle();
-    await page.evaluate(el => el && el.click(), handle);
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }),
+      page.evaluate(el => el && el.click(), handle),
+    ]);
   }
+
+  // Verify we're now on the checkout page
+  await expect(page).toHaveURL(/checkout\/.*/, { timeout: 15000 });
 }
 
 async function fillShippingDetails(page) {
-  await page.fill('input#customer-email', 'naveen@autify.net');
+  await expect(page.locator('input#customer-email')).toBeVisible({ timeout: 10000 });
+await page.fill('input#customer-email', 'naveen@autify.net');
   await page.fill('input[name="firstname"]', 'Test');
   await page.fill('input[name="lastname"]', 'Data');
   await page.fill('input[name="company"]', 'Autify');

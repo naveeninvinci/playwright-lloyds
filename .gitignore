@@ -1,4 +1,27 @@
+# Node.js dependencies
 node_modules/
+
+# Playwright test results
 test-results/
+playwright-report/
+
+# Allure results and reports
+allure-results/
+allure-report/
+static-allure-report/
+
+# Environment variables
 .env
 
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# VSCode settings (optional, if you're using VSCode and want to exclude them)
+.vscode/
