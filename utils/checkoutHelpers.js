@@ -49,13 +49,13 @@ async function fillShippingDetails(page) {
   await page.locator('button[data-role="opc-continue"]').click();
 }
 
-async function selectLcnetPayment(page) {
+async function selectLloydsCardnetPaymentJs(page) {
   const label = page.locator('label[for="lcnetpaymentjs"]');
   await expect(label).toBeVisible({ timeout: 5000 });
   await label.click();
 }
 
-async function selectLcnetRedirectPayment(page) {
+async function selectLloydsCardnetConnect(page) {
   const label = page.locator('label[for="lcnetredirect"]');
   await expect(label).toBeVisible({ timeout: 5000 });
   await label.click();
@@ -101,8 +101,8 @@ export {
   navigateToProductAndAddToCart,
   proceedToCheckout,
   fillShippingDetails,
-  selectLcnetPayment,
-  selectLcnetRedirectPayment,
+  selectLloydsCardnetPaymentJs,
+  selectLloydsCardnetConnect,
   fillPaymentDetails,
   validatePaymentFields,
   fillRedirectPaymentDetails
