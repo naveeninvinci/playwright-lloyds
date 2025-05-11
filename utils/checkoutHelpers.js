@@ -30,22 +30,24 @@ async function proceedToCheckout(page) {
   await expect(page).toHaveURL(/checkout\/.*/, { timeout: 15000 });
 }
 
-async function fillShippingDetails(page) {
+async function fillShippingDetails(page, data) {
   await expect(page.locator('input#customer-email')).toBeVisible({ timeout: 10000 });
-  await page.fill('input#customer-email', 'naveen@autify.net');
-  await page.fill('input[name="firstname"]', 'Test');
-  await page.fill('input[name="lastname"]', 'Data');
-  await page.fill('input[name="company"]', 'Autify');
-  await page.fill('input[name="street[0]"]', 'B901');
-  await page.fill('input[name="street[1]"]', 'Broad street');
-  await page.selectOption('select[name="country_id"]', 'GB');
-  await page.fill('input[name="city"]', 'Nottingham');
-  await page.fill('input[name="postcode"]', 'NG1 3AP');
-  await page.fill('input[name="telephone"]', '07765465422');
+
+  await page.fill('input#customer-email', data.email);
+  await page.fill('input[name="firstname"]', data.firstname);
+  await page.fill('input[name="lastname"]', data.lastname);
+  await page.fill('input[name="company"]', data.company);
+  await page.fill('input[name="street[0]"]', data.street1);
+  await page.fill('input[name="street[1]"]', data.street2);
+  await page.selectOption('select[name="country_id"]', data.country);
+  await page.fill('input[name="city"]', data.city);
+  await page.fill('input[name="postcode"]', data.postcode);
+  await page.fill('input[name="telephone"]', data.telephone);
 
   const shippingMethod = page.locator('input[type="radio"][name="ko_unique_4"]');
   await expect(shippingMethod.first()).toBeVisible({ timeout: 10000 });
   await shippingMethod.first().check();
+
   await page.locator('button[data-role="opc-continue"]').click();
 }
 

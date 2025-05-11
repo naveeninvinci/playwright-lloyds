@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import cardData from '../data/cards.json' assert { type: 'json' };
+import { shippingDetails } from '../data/shippingData.js';
 import {
   navigateToProductAndAddToCart,
   proceedToCheckout,
@@ -16,7 +17,7 @@ test.describe.parallel('Checkout flows', () => {
   test.beforeEach(async ({ page }) => {
     await navigateToProductAndAddToCart(page);
     await proceedToCheckout(page);
-    await fillShippingDetails(page);
+    await fillShippingDetails(page, shippingDetails);
   });
 
   test.describe('Redirect payment flow', () => {
