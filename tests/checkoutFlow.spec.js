@@ -4,8 +4,8 @@ import {
   navigateToProductAndAddToCart,
   proceedToCheckout,
   fillShippingDetails,
-  selectLcnetPayment,
-  selectLcnetRedirectPayment,
+  selectLloydsCardnetPaymentJs,
+  selectLloydsCardnetConnect,
   fillPaymentDetails,
   validatePaymentFields,
   fillRedirectPaymentDetails,
@@ -22,7 +22,7 @@ test.describe.parallel('Checkout flows', () => {
   test.describe('Redirect payment flow', () => {
     for (const card of cardData) {
       test(`Redirect Checkout: ${card.label}`, async ({ page }) => {
-        await selectLcnetRedirectPayment(page);
+        await selectLloydsCardnetConnect(page);
 
         await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
         await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
@@ -35,7 +35,7 @@ test.describe.parallel('Checkout flows', () => {
   test.describe('JS iframe payment flow', () => {
     for (const card of cardData) {
       test(`JS Checkout: ${card.label}`, async ({ page }) => {
-        await selectLcnetPayment(page);
+        await selectLloydsCardnetPaymentJs(page);
         await fillPaymentDetails(page, card);
 
         const allValid = await validatePaymentFields(page);
