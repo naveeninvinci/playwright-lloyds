@@ -1,0 +1,24 @@
+[
+    {
+      "name": "Naveen",
+      "number": "4147463011110083",
+      "exp": "0829",
+      "cvv": "123",
+      "label": "Valid Frictionless - Fully Authenticated"
+    },
+    {
+      "name": "Test User",
+      "number": "4761120010000492",
+      "exp": "1026",
+      "cvv": "456",
+      "label": "Another valid card Frictionless - Fully Authenticated 3ds"
+    },
+    {
+      "name": "Invalid Card",
+      "number": "4147463011110091",
+      "exp": "0525",
+      "cvv": "999",
+      "label": "Invalid Frictionless - Not Authenticated"
+    }
+  ]
+  
