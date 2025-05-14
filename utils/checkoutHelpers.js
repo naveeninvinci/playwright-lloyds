@@ -72,7 +72,14 @@ async function fillPaymentDetails(page, card) {
   await page.frameLocator('#first-data-payment-field-cvv').locator('input').press('Tab');
 }
 
-async function fillRedirectPaymentDetails(page, card) {
+/**
+ * Fills redirect payment details and handles 3DS choice
+ * @param {import('@playwright/test').Page} page 
+ * @param {Object} card 
+ * @param {'yes' | 'no'} [choice='yes'] - Which 3DS button to click
+ */
+
+async function fillRedirectPaymentDetails(page, card, choice = 'yes') {
   const expMonth = card.exp.slice(0, 2);
   const expYear = '20' + card.exp.slice(2);
 
@@ -84,7 +91,87 @@ async function fillRedirectPaymentDetails(page, card) {
   await page.locator('#cardNumber').fill(card.number);
   await page.locator('#expiryMonth').selectOption(expMonth);
   await page.locator('#expiryYear').selectOption(expYear);
-  await page.locator('#cardCode_masked').fill(card.cvv);
+  await page.locator('#cardCode_masked').type(card.cvv);
+  await page.click('#nextBtn');
+  console.log('Submitted card details');
+
+  // 🔐 Handle 3DS authentication
+  await handle3DSChallenge(page, choice);
+
+  // Wait for either success or error message
+  await Promise.race([
+  page.locator('[data-ui-id="message-success"]').waitFor({ timeout: 25000 }),
+  page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]').waitFor({ timeout: 25000 })
+]);
+
+// Then check which one appeared
+if (await page.locator('[data-ui-id="message-success"]').isVisible()) {
+  await verifyOrderSuccessMessage(page);
+} else if (await page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]').isVisible()) {
+  await verifyPaymentFailureMessage(page);
+} else {
+  throw new Error('Neither success nor failure message appeared.');
+}
+}
+
+// Reusable function to verify order success message
+async function verifyOrderSuccessMessage(page) {
+  const messageLocator = page.locator('[data-ui-id="message-success"] >> text=Your order number with');
+
+  // Wait for the element and check if it contains the expected text
+  await expect(messageLocator).toContainText('Your order number with');
+
+  const fullMessage = await messageLocator.textContent();
+  expect(fullMessage).toMatch(/Your order number with \d+ is successful/);
+
+  console.log('Order success message verified:', fullMessage);
+}
+
+async function verifyPaymentFailureMessage(page) {
+  const errorLocator = page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]');
+
+  // Wait for the error message to appear (up to 10 seconds)
+  await errorLocator.waitFor({ timeout: 10000 });
+
+  // Check that it contains the expected failure text
+  await expect(errorLocator).toContainText('Declined: Your bank has declined the payment');
+
+  const errorMessage = await errorLocator.textContent();
+  console.log('Payment failure message verified:', errorMessage);
+}
+
+async function handle3DSChallenge(page, choice = 'yes') {
+  const iframeSelector = 'iframe[src*="modirum"]';
+  const buttonSelector = `button#${choice}`;
+
+  const iframeElement = await page.locator(iframeSelector).elementHandle({ timeout: 5000 }).catch(() => null);
+  if (iframeElement) {
+    console.log(`🔐 3DS iframe detected, attempting "${choice}" inside iframe...`);
+    try {
+      const frame = page.frameLocator(iframeSelector);
+      await frame.locator(buttonSelector).waitFor({ timeout: 5000 });
+      await frame.locator(buttonSelector).click();
+      console.log(`✅ Clicked "${choice}" inside iframe`);
+      return;
+    } catch (e) {
+      console.warn(`⚠️ Failed to click "${choice}" in iframe:`, e.message);
+    }
+  } else {
+    console.log('ℹ️ 3DS iframe not detected, checking main page...');
+  }
+
+  const fallbackButton = await page.locator(buttonSelector).elementHandle({ timeout: 5000 }).catch(() => null);
+  if (fallbackButton) {
+    try {
+      await page.locator(buttonSelector).click();
+      console.log(`✅ Clicked "${choice}" on main page`);
+    } catch (e) {
+      console.error(`❌ Failed to click "${choice}" on main page:`, e.message);
+      throw e;
+    }
+  } else {
+    console.log('ℹ️ No 3DS challenge detected, continuing...');
+  }
 }
 
 async function validatePaymentFields(page) {
