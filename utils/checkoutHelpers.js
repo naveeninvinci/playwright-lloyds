@@ -48,9 +48,16 @@ async function fillShippingDetails(page, data) {
   await page.fill('input[name="postcode"]', data.postcode);
   await page.fill('input[name="telephone"]', data.telephone);
 
-  const shippingMethod = page.locator('input[type="radio"][name="ko_unique_4"]');
-  await expect(shippingMethod.first()).toBeVisible({ timeout: 10000 });
-  await shippingMethod.first().check();
+  // Choose a shipping method randomly
+  const shippingOptions = ['ko_unique_4', 'ko_unique_5'];
+  const chosenOption = shippingOptions[Math.floor(Math.random() * shippingOptions.length)];
+  const shippingMethod = page.locator(`input[type="radio"][name="${chosenOption}"]`);
+
+  await expect(shippingMethod).toBeVisible({ timeout: 10000 });
+  await shippingMethod.check();
+
+  console.log(`📦 Selected shipping method: ${chosenOption}`);
+
 
   await page.locator('button[data-role="opc-continue"]').click();
 }
@@ -116,6 +123,99 @@ if (await page.locator('[data-ui-id="message-success"]').isVisible()) {
 } else {
   throw new Error('Neither success nor failure message appeared.');
 }
+}
+
+async function fillFirstVisibleInput(locator, value) {
+  const count = await locator.count();
+  for (let i = 0; i < count; i++) {
+    const el = locator.nth(i);
+    if (await el.isVisible()) {
+      await el.fill(value);
+      return;
+    }
+  }
+  throw new Error('No visible input found for filling');
+}
+
+async function fillFirstVisibleSelect(locator, value) {
+  const count = await locator.count();
+  for (let i = 0; i < count; i++) {
+    const el = locator.nth(i);
+    if (await el.isVisible()) {
+      await el.selectOption(value);
+      return;
+    }
+  }
+  throw new Error('No visible select found for selecting option');
+}
+
+async function clickFirstVisibleButton(page, selector) {
+  const buttons = page.locator(selector);
+  const count = await buttons.count();
+  for (let i = 0; i < count; i++) {
+    const btn = buttons.nth(i);
+    if (await btn.isVisible()) {
+      await btn.click();
+      return;
+    }
+  }
+  throw new Error(`No visible button found for selector: ${selector}`);
+}
+
+async function fillBillingAddressConditionally(page, billingData) {
+   // Try both possible checkbox IDs
+   const checkboxSelectors = [
+    '#billing-address-same-as-shipping-lcnetredirect',
+    '#billing-address-same-as-shipping-lcnetpaymentjs'
+  ];
+
+  let checkbox;
+  for (const selector of checkboxSelectors) {
+    const candidate = page.locator(selector);
+    try {
+      await expect(candidate).toBeVisible({ timeout: 3000 });
+      checkbox = candidate;
+      break; // Found the first visible one
+    } catch {
+      // Not visible or not found — move on to the next
+    }
+  }
+
+  if (!checkbox) {
+    console.warn('⚠️ Billing address checkbox not found or visible.');
+    return;
+  }
+
+  const shouldUncheck = Math.random() < 0.5;
+  const isChecked = await checkbox.isChecked();
+
+  if (shouldUncheck && isChecked) {
+    await checkbox.uncheck();
+    console.log('🟡 Randomly chose: Use different billing address');
+    // Wait up to 15 seconds for the form to appear in DOM
+await page.waitForSelector('fieldset[data-form="billing-new-address"]', { state: 'attached', timeout: 15000 });
+
+    const formExists = await page.$('fieldset[data-form="billing-new-address"]');
+console.log('Billing form exists in DOM?', !!formExists);
+
+
+const billingFieldset = page.locator('fieldset[data-form="billing-new-address"]');
+
+await fillFirstVisibleInput(billingFieldset.locator('input[name="firstname"]'), billingData.firstname);
+    await fillFirstVisibleInput(billingFieldset.locator('input[name="lastname"]'), billingData.lastname);
+    await fillFirstVisibleInput(billingFieldset.locator('input[name="company"]'), billingData.company);
+    await fillFirstVisibleInput(billingFieldset.locator('input[name="street[0]"]'), billingData.street1);
+    await fillFirstVisibleInput(billingFieldset.locator('input[name="street[1]"]'), billingData.street2);
+    await fillFirstVisibleSelect(billingFieldset.locator('select[name="country_id"]'), billingData.country);
+    await fillFirstVisibleInput(billingFieldset.locator('input[name="city"]'), billingData.city);
+    await fillFirstVisibleInput(billingFieldset.locator('input[name="postcode"]'), billingData.postcode);
+    await fillFirstVisibleInput(billingFieldset.locator('input[name="telephone"]'), billingData.telephone);
+
+    console.log('✅ Filled different billing address');
+    await clickFirstVisibleButton(page, 'button.action-update');
+  } else {
+    console.log('🟢 Keeping billing address same as shipping');
+  }
 }
 
 // Reusable function to verify order success message
@@ -198,5 +298,6 @@ export {
   selectLloydsCardnetConnect,
   fillPaymentDetails,
   validatePaymentFields,
-  fillRedirectPaymentDetails
+  fillRedirectPaymentDetails,
+  fillBillingAddressConditionally
 };
