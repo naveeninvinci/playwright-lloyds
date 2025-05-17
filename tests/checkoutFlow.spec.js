@@ -11,7 +11,8 @@ import {
   selectLloydsCardnetConnect,
   fillPaymentDetails,
   validatePaymentFields,
-  fillRedirectPaymentDetails
+  fillRedirectPaymentDetails,
+  fillBillingAddressConditionally
 } from '../utils/checkoutHelpers.js';
 
 for (const scenario of productScenarios) {
@@ -19,13 +20,14 @@ for (const scenario of productScenarios) {
     test.beforeEach(async ({ page }) => {
       await addProductsToCart(page, scenario.products);
       await proceedToCheckout(page);
-      await fillShippingDetails(page, shippingDetails);
+      await fillShippingDetails(page, shippingDetails.shipping);
     });
 
     test.describe('Redirect payment flow', () => {
       for (const card of cardData) {
         test(`Redirect Checkout: ${card.label}`, async ({ page }) => {
           await selectLloydsCardnetConnect(page);
+          await fillBillingAddressConditionally(page, shippingDetails.billing)
           await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
           await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
           await fillRedirectPaymentDetails(page, card, card.challengeChoice);
@@ -37,6 +39,7 @@ for (const scenario of productScenarios) {
       for (const card of cardData) {
         test(`JS Checkout: ${card.label}`, async ({ page }) => {
           await selectLloydsCardnetPaymentJs(page);
+          await fillBillingAddressConditionally(page, shippingDetails.billing)
           await fillPaymentDetails(page, card);
           const allValid = await validatePaymentFields(page);
 
