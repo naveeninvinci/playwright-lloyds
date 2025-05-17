@@ -1,0 +1,15 @@
+[
+    {
+      "label": "Single Product - Fusion Backpack",
+      "products": [
+        "https://lloyds-m2.autify-payments.com/fusion-backpack.html"
+      ]
+    },
+    {
+      "label": "Multiple Products - Crown Summit + Fusion Backpack",
+      "products": [
+        "https://lloyds-m2.autify-payments.com/crown-summit-backpack.html",
+        "https://lloyds-m2.autify-payments.com/fusion-backpack.html"
+      ]
+    }
+  ]
