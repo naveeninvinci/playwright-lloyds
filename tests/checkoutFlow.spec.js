@@ -33,21 +33,21 @@ import {
     }
   });
 
-  // test.describe('JS iframe payment flow', () => {
-  //   for (const card of cardData) {
-  //     test(`JS Checkout: ${card.label}`, async ({ page }) => {
-  //       await selectLloydsCardnetPaymentJs(page);
-  //       await fillPaymentDetails(page, card);
+  test.describe('JS iframe payment flow', () => {
+    for (const card of cardData) {
+      test(`JS Checkout: ${card.label}`, async ({ page }) => {
+        await selectLloydsCardnetPaymentJs(page);
+        await fillPaymentDetails(page, card);
 
-  //       const allValid = await validatePaymentFields(page);
-  //       if (allValid) {
-  //         console.log(`${card.label} — All payment fields are valid. Placing order...`);
-  //       } else {
-  //         console.warn(`${card.label} — Some fields are invalid. Skipping order.`);
-  //       }
-  //     });
-  //   }
-  // });
+        const allValid = await validatePaymentFields(page);
+        if (allValid) {
+          console.log(`${card.label} — All payment fields are valid. Placing order...`);
+        } else {
+          console.warn(`${card.label} — Some fields are invalid. Skipping order.`);
+        }
+      });
+    }
+  });
 
   test.afterEach(async ({ page }, testInfo) => {
     if (testInfo.status !== testInfo.expectedStatus) {

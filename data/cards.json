@@ -23,6 +23,22 @@
       "challengeChoice": "no"
     },
     {
+      "name": "Naveen",
+      "number": "4149011500000527",
+      "exp": "0829",
+      "cvv": "123",
+      "label": "Valid Challenge Flow with 3DS yes - Configurable responses",
+      "challengeChoice": "yes"
+    },
+    {
+      "name": "Naveen",
+      "number": "4149011500000527",
+      "exp": "0829",
+      "cvv": "123",
+      "label": "Valid Challenge Flow with 3DS no - Configurable responses",
+      "challengeChoice": "no"
+    },
+    {
       "name": "Test User",
       "number": "4761120010000492",
       "exp": "1026",
