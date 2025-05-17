@@ -1,8 +1,12 @@
 import { expect } from '@playwright/test';
 
-async function navigateToProductAndAddToCart(page) {
-  await page.goto('https://lloyds-m2.autify-payments.com/crown-summit-backpack.html');
-  await page.getByRole('button', { name: 'Add to Cart' }).click();
+async function addProductsToCart(page, productUrls) {
+  for (const url of productUrls) {
+    await page.goto(url);
+    await page.getByRole('button', { name: 'Add to Cart' }).click();
+    await page.waitForTimeout(1000); // Slight delay between additions
+  }
+  // Go to cart after adding products
   await page.getByRole('link', { name: 'shopping cart' }).click();
   await page.waitForSelector('button[data-role="proceed-to-checkout"]', { timeout: 10000 });
 }
@@ -144,7 +148,7 @@ async function handle3DSChallenge(page, choice = 'yes') {
   const iframeSelector = 'iframe[src*="modirum"]';
   const buttonSelector = `button#${choice}`;
 
-  const iframeElement = await page.locator(iframeSelector).elementHandle({ timeout: 5000 }).catch(() => null);
+  const iframeElement = await page.locator(iframeSelector).elementHandle({ timeout: 10000 }).catch(() => null);
   if (iframeElement) {
     console.log(`🔐 3DS iframe detected, attempting "${choice}" inside iframe...`);
     try {
@@ -187,7 +191,7 @@ async function validatePaymentFields(page) {
 }
 
 export {
-  navigateToProductAndAddToCart,
+  addProductsToCart,
   proceedToCheckout,
   fillShippingDetails,
   selectLloydsCardnetPaymentJs,
