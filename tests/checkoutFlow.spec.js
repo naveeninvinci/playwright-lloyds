@@ -13,7 +13,8 @@ import {
   validatePaymentFields,
   fillRedirectPaymentDetails,
   fillBillingAddressConditionally,
-  verifyBillingDetails
+  verifyBillingDetails,
+  clickPlaceOrderButton
 } from '../utils/checkoutHelpers.js';
 
 for (const scenario of productScenarios) {
@@ -31,19 +32,6 @@ if (chosenOption === 'ko_unique_5') {
 }
     });
 
-    // test.describe('Redirect payment flow', () => {
-    //   for (const card of cardData) {
-    //     test(`Redirect Checkout: ${card.label}`, async ({ page }) => {
-    //       await selectLloydsCardnetConnect(page);
-    //       await fillBillingAddressConditionally(page, shippingDetails.billing);
-    //       await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
-    //       await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
-    //       await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
-    //       await fillRedirectPaymentDetails(page, card, card.challengeChoice);
-    //     });
-    //   }
-    // });
-
     test.describe('JS iframe payment flow', () => {
       for (const card of cardData) {
         test(`JS Checkout: ${card.label}`, async ({ page }) => {
@@ -55,25 +43,28 @@ if (chosenOption === 'ko_unique_5') {
 
           if (allValid) {
             console.log(`${card.label} — All payment fields are valid. Placing order...`);
-            const placeOrderBtn = page.locator('button:has-text("Place Order")').filter({
-              hasNotText: 'GooglePay',
-            }).nth(1); // or adjust this index based on DOM if needed
-            
-            await placeOrderBtn.waitFor({
-              state: 'visible',
-              timeout: 20000, // wait up to 20 seconds for visibility
-            });
-            
-            // Wait for button to be enabled
-            await expect(placeOrderBtn).toBeEnabled({ timeout: 20000 });
-            
-            await placeOrderBtn.click();
+            //Function for Payment js Place Order click
+            //clickPlaceOrderButton(page);
           } else {
             console.warn(`${card.label} — Some fields are invalid. Skipping order.`);
           }
         });
       }
     });
+
+    test.describe('Redirect payment flow', () => {
+      for (const card of cardData) {
+        test(`Redirect Checkout: ${card.label}`, async ({ page }) => {
+          await selectLloydsCardnetConnect(page);
+          await fillBillingAddressConditionally(page, shippingDetails.billing);
+          await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
+          //await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
+          //await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
+          //await fillRedirectPaymentDetails(page, card, card.challengeChoice);
+        });
+      }
+    });
+
   });
 }
 

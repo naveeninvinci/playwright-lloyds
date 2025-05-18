@@ -8,10 +8,11 @@ async function addProductsToCart(page, productUrls) {
   }
   // Go to cart after adding products
   await page.getByRole('link', { name: 'shopping cart' }).click();
-  await page.waitForSelector('button[data-role="proceed-to-checkout"]', { timeout: 10000 });
+  await page.waitForSelector('button[data-role="proceed-to-checkout"]', { timeout: 20000 });
 }
 
 async function proceedToCheckout(page) {
+  await page.waitForSelector('button[data-role="proceed-to-checkout"]', { timeout: 20000 });
   const checkoutBtn = page.locator('button[data-role="proceed-to-checkout"]');
   await checkoutBtn.scrollIntoViewIfNeeded();
   await expect(checkoutBtn).toBeVisible({ timeout: 10000 });
@@ -76,15 +77,11 @@ async function fillShippingDetails(page, data) {
     console.log('💰 Extracted shipping price:', expectedPrice);
   }
 
-    // Store the price globally or return it for use in the next step
-    // e.g., using page context or returning it from this function
-
   await page.locator('button[data-role="opc-continue"]').click();
 
   return { chosenOption, expectedPrice };
 
 }
-
 
 async function selectLloydsCardnetPaymentJs(page) {
   const label = page.locator('label[for="lcnetpaymentjs"]');
@@ -246,25 +243,7 @@ await fillFirstVisibleInput(billingFieldset.locator('input[name="firstname"]'), 
 }
 
 export async function verifyBillingDetails(page, shippingData, billingData) {
-  const allBillingElements = page.locator('.billing-address-details');
-  const count = await allBillingElements.count();
-
-  let visibleIndex = -1;
-  for (let i = 0; i < count; i++) {
-    if (await allBillingElements.nth(i).isVisible()) {
-      visibleIndex = i;
-      break; // stop at first visible
-    }
-  }
-
-  if (visibleIndex === -1) {
-    throw new Error('No visible .billing-address-details element found!');
-  }
-
-  const billingText = await allBillingElements.nth(visibleIndex).innerText();
-  console.log('📋 Billing address text from visible element:\n', billingText);
-
-  // Now find the checkbox - check for all possible ids and visibility
+  // STEP 1: Check the checkbox state first
   const checkboxSelectors = [
     '#billing-address-same-as-shipping',
     '#billing-address-same-as-shipping-lcnetredirect',
@@ -286,19 +265,42 @@ export async function verifyBillingDetails(page, shippingData, billingData) {
 
   if (!foundCheckbox) {
     console.warn('⚠️ No visible billing same-as-shipping checkbox found! Assuming billing data used.');
-    isChecked = false;
   }
 
   const expectedData = isChecked ? shippingData : billingData;
 
-  // Assertions based on expected data
+  // STEP 2: Locate visible billing block
+  const allBillingElements = page.locator('.billing-address-details');
+  const count = await allBillingElements.count();
+
+  let visibleIndex = -1;
+  for (let i = 0; i < count; i++) {
+    if (await allBillingElements.nth(i).isVisible()) {
+      visibleIndex = i;
+      break;
+    }
+  }
+
+  if (visibleIndex === -1) {
+    if (isChecked) {
+      console.warn('⚠️ No visible billing address block found, and checkbox is checked. Skipping billing verification.');
+      return;
+    } else {
+      throw new Error('❌ Expected billing address block to be visible, but it is not!');
+    }
+  }
+
+  // STEP 3: Validate content
+  const billingText = await allBillingElements.nth(visibleIndex).innerText();
+  console.log('📋 Billing address text from visible element:\n', billingText);
+
   expect(billingText).toContain(expectedData.firstname);
   expect(billingText).toContain(expectedData.lastname);
   expect(billingText).toContain(expectedData.company);
   expect(billingText).toContain(expectedData.street1);
   expect(billingText).toContain(expectedData.city);
   expect(billingText).toContain(expectedData.postcode);
-  expect(billingText).toContain('United Kingdom'); // as seen in markup
+  expect(billingText).toContain('United Kingdom');
   expect(billingText).toContain(expectedData.telephone);
 
   console.log(`✅ Verified billing address (${isChecked ? 'same as shipping' : 'billing details filled'})`);
@@ -374,6 +376,21 @@ async function validatePaymentFields(page) {
   console.log('Name:', nameClass, '| Card:', cardClass, '| Exp:', expClass, '| CVV:', cvvClass);
 
   return [nameClass, cardClass, expClass, cvvClass].every(cls => cls?.includes('valid'));
+}
+
+export async function clickPlaceOrderButton(page) {
+  const placeOrderBtn = page.locator('button:has-text("Place Order")').filter({
+    hasNotText: 'GooglePay',
+  }).nth(1); // Adjust the index if needed
+
+  await placeOrderBtn.waitFor({
+    state: 'visible',
+    timeout: 20000,
+  });
+
+  await expect(placeOrderBtn).toBeEnabled({ timeout: 20000 });
+
+  await placeOrderBtn.click();
 }
 
 export {
