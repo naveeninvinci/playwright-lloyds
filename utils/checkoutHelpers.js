@@ -59,8 +59,32 @@ async function fillShippingDetails(page, data) {
   console.log(`📦 Selected shipping method: ${chosenOption}`);
 
 
+  let expectedPrice = null;
+
+  // If ko_unique_5 is selected, store its price
+  if (chosenOption === 'ko_unique_5') {
+    const priceElement = page
+      .locator('input[name="ko_unique_5"]')
+      .locator('xpath=ancestor::tr//td[contains(@class, "col-price")]//span[@class="price"]')
+      .first();
+  
+    await expect(priceElement).toBeVisible({ timeout: 5000 });
+  
+    const priceText = await priceElement.textContent();
+    expectedPrice = priceText?.trim();
+  
+    console.log('💰 Extracted shipping price:', expectedPrice);
+  }
+
+    // Store the price globally or return it for use in the next step
+    // e.g., using page context or returning it from this function
+
   await page.locator('button[data-role="opc-continue"]').click();
+
+  return { chosenOption, expectedPrice };
+
 }
+
 
 async function selectLloydsCardnetPaymentJs(page) {
   const label = page.locator('label[for="lcnetpaymentjs"]');
@@ -213,9 +237,71 @@ await fillFirstVisibleInput(billingFieldset.locator('input[name="firstname"]'), 
 
     console.log('✅ Filled different billing address');
     await clickFirstVisibleButton(page, 'button.action-update');
+
+    // After clicking update button
+    //await verifyBillingDetails(page, billingData);
   } else {
     console.log('🟢 Keeping billing address same as shipping');
   }
+}
+
+export async function verifyBillingDetails(page, shippingData, billingData) {
+  const allBillingElements = page.locator('.billing-address-details');
+  const count = await allBillingElements.count();
+
+  let visibleIndex = -1;
+  for (let i = 0; i < count; i++) {
+    if (await allBillingElements.nth(i).isVisible()) {
+      visibleIndex = i;
+      break; // stop at first visible
+    }
+  }
+
+  if (visibleIndex === -1) {
+    throw new Error('No visible .billing-address-details element found!');
+  }
+
+  const billingText = await allBillingElements.nth(visibleIndex).innerText();
+  console.log('📋 Billing address text from visible element:\n', billingText);
+
+  // Now find the checkbox - check for all possible ids and visibility
+  const checkboxSelectors = [
+    '#billing-address-same-as-shipping',
+    '#billing-address-same-as-shipping-lcnetredirect',
+    '#billing-address-same-as-shipping-lcnetpaymentjs'
+  ];
+
+  let isChecked = false;
+  let foundCheckbox = false;
+
+  for (const selector of checkboxSelectors) {
+    const checkbox = page.locator(selector);
+    if (await checkbox.count() > 0 && await checkbox.isVisible()) {
+      isChecked = await checkbox.isChecked();
+      console.log(`✅ Checkbox found & visible: '${selector}', isChecked: ${isChecked}`);
+      foundCheckbox = true;
+      break;
+    }
+  }
+
+  if (!foundCheckbox) {
+    console.warn('⚠️ No visible billing same-as-shipping checkbox found! Assuming billing data used.');
+    isChecked = false;
+  }
+
+  const expectedData = isChecked ? shippingData : billingData;
+
+  // Assertions based on expected data
+  expect(billingText).toContain(expectedData.firstname);
+  expect(billingText).toContain(expectedData.lastname);
+  expect(billingText).toContain(expectedData.company);
+  expect(billingText).toContain(expectedData.street1);
+  expect(billingText).toContain(expectedData.city);
+  expect(billingText).toContain(expectedData.postcode);
+  expect(billingText).toContain('United Kingdom'); // as seen in markup
+  expect(billingText).toContain(expectedData.telephone);
+
+  console.log(`✅ Verified billing address (${isChecked ? 'same as shipping' : 'billing details filled'})`);
 }
 
 // Reusable function to verify order success message
