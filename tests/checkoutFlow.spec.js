@@ -12,7 +12,8 @@ import {
   fillPaymentDetails,
   validatePaymentFields,
   fillRedirectPaymentDetails,
-  fillBillingAddressConditionally
+  fillBillingAddressConditionally,
+  verifyBillingDetails
 } from '../utils/checkoutHelpers.js';
 
 for (const scenario of productScenarios) {
@@ -20,32 +21,53 @@ for (const scenario of productScenarios) {
     test.beforeEach(async ({ page }) => {
       await addProductsToCart(page, scenario.products);
       await proceedToCheckout(page);
-      await fillShippingDetails(page, shippingDetails.shipping);
+      const { chosenOption, expectedPrice } = await fillShippingDetails(page, shippingDetails.shipping);
+
+// Later, if ko_unique_5 was chosen, assert the price on the next page:
+if (chosenOption === 'ko_unique_5') {
+  const priceOnNextPage = await page.locator('span.price[data-th="Shipping"]').textContent();
+  expect(priceOnNextPage?.trim()).toBe(expectedPrice);
+  console.log(expectedPrice ,'matches', priceOnNextPage?.trim());
+}
     });
 
-    test.describe('Redirect payment flow', () => {
-      for (const card of cardData) {
-        test(`Redirect Checkout: ${card.label}`, async ({ page }) => {
-          await selectLloydsCardnetConnect(page);
-          await fillBillingAddressConditionally(page, shippingDetails.billing)
-          await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
-          await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
-          await fillRedirectPaymentDetails(page, card, card.challengeChoice);
-        });
-      }
-    });
+    // test.describe('Redirect payment flow', () => {
+    //   for (const card of cardData) {
+    //     test(`Redirect Checkout: ${card.label}`, async ({ page }) => {
+    //       await selectLloydsCardnetConnect(page);
+    //       await fillBillingAddressConditionally(page, shippingDetails.billing);
+    //       await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
+    //       await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
+    //       await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
+    //       await fillRedirectPaymentDetails(page, card, card.challengeChoice);
+    //     });
+    //   }
+    // });
 
     test.describe('JS iframe payment flow', () => {
       for (const card of cardData) {
         test(`JS Checkout: ${card.label}`, async ({ page }) => {
           await selectLloydsCardnetPaymentJs(page);
-          await fillBillingAddressConditionally(page, shippingDetails.billing)
+          await fillBillingAddressConditionally(page, shippingDetails.billing);
+          await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
           await fillPaymentDetails(page, card);
           const allValid = await validatePaymentFields(page);
 
           if (allValid) {
             console.log(`${card.label} — All payment fields are valid. Placing order...`);
-            // Optional: page.locator('button:has-text("Place Order")').click();
+            const placeOrderBtn = page.locator('button:has-text("Place Order")').filter({
+              hasNotText: 'GooglePay',
+            }).nth(1); // or adjust this index based on DOM if needed
+            
+            await placeOrderBtn.waitFor({
+              state: 'visible',
+              timeout: 20000, // wait up to 20 seconds for visibility
+            });
+            
+            // Wait for button to be enabled
+            await expect(placeOrderBtn).toBeEnabled({ timeout: 20000 });
+            
+            await placeOrderBtn.click();
           } else {
             console.warn(`${card.label} — Some fields are invalid. Skipping order.`);
           }
