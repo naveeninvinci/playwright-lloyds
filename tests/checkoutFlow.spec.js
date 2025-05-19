@@ -14,7 +14,8 @@ import {
   fillRedirectPaymentDetails,
   fillBillingAddressConditionally,
   verifyBillingDetails,
-  clickPlaceOrderButton
+  clickPlaceOrderButton,
+  handleOrderResult
 } from '../utils/checkoutHelpers.js';
 
 for (const scenario of productScenarios) {
@@ -43,8 +44,14 @@ if (chosenOption === 'ko_unique_5') {
 
           if (allValid) {
             console.log(`${card.label} — All payment fields are valid. Placing order...`);
+            // Wait for the spinner to disappear before proceeding
+            await page.locator('.loading-mask, .spinner, .loading-indicator').waitFor({
+            state: 'hidden',
+            timeout: 10000,
+  }); 
             //Function for Payment js Place Order click
-            //clickPlaceOrderButton(page);
+            clickPlaceOrderButton(page);
+            await handleOrderResult(page);
           } else {
             console.warn(`${card.label} — Some fields are invalid. Skipping order.`);
           }
@@ -58,9 +65,10 @@ if (chosenOption === 'ko_unique_5') {
           await selectLloydsCardnetConnect(page);
           await fillBillingAddressConditionally(page, shippingDetails.billing);
           await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
-          //await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
-          //await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
-          //await fillRedirectPaymentDetails(page, card, card.challengeChoice);
+          await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
+          await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
+          await fillRedirectPaymentDetails(page, card, card.challengeChoice);
+          await handleOrderResult(page);
         });
       }
     });

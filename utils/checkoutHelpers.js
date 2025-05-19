@@ -129,21 +129,28 @@ async function fillRedirectPaymentDetails(page, card, choice = 'yes') {
 
   // 🔐 Handle 3DS authentication
   await handle3DSChallenge(page, choice);
-
-  // Wait for either success or error message
-  await Promise.race([
-  page.locator('[data-ui-id="message-success"]').waitFor({ timeout: 25000 }),
-  page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]').waitFor({ timeout: 25000 })
-]);
-
-// Then check which one appeared
-if (await page.locator('[data-ui-id="message-success"]').isVisible()) {
-  await verifyOrderSuccessMessage(page);
-} else if (await page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]').isVisible()) {
-  await verifyPaymentFailureMessage(page);
-} else {
-  throw new Error('Neither success nor failure message appeared.');
 }
+
+export async function handleOrderResult(page) {
+  const successMsg = page.locator('[data-ui-id="message-success"]');
+  const errorMsg = page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]');
+
+  // Wait for either success or failure message
+  await Promise.race([
+    successMsg.waitFor({ timeout: 25000 }),
+    errorMsg.waitFor({ timeout: 25000 }),
+  ]);
+
+  // Check which one is visible and act accordingly
+  if (await successMsg.isVisible()) {
+    console.log('✅ Success message appeared');
+    await verifyOrderSuccessMessage(page);
+  } else if (await errorMsg.isVisible()) {
+    console.log('❌ Error message appeared');
+    await verifyPaymentFailureMessage(page);
+  } else {
+    throw new Error('⚠️ Neither success nor failure message appeared after placing the order.');
+  }
 }
 
 async function fillFirstVisibleInput(locator, value) {
@@ -307,16 +314,18 @@ export async function verifyBillingDetails(page, shippingData, billingData) {
 }
 
 // Reusable function to verify order success message
-async function verifyOrderSuccessMessage(page) {
-  const messageLocator = page.locator('[data-ui-id="message-success"] >> text=Your order number with');
+export async function verifyOrderSuccessMessage(page) {
+  const messageLocator = page.locator('[data-ui-id="message-success"]');
 
-  // Wait for the element and check if it contains the expected text
-  await expect(messageLocator).toContainText('Your order number with');
+  // Wait for the full message text to appear
+  await expect(messageLocator).toContainText('Your order number with', {
+    timeout: 15000, // increase timeout to wait for full message rendering
+  });
 
   const fullMessage = await messageLocator.textContent();
   expect(fullMessage).toMatch(/Your order number with \d+ is successful/);
 
-  console.log('Order success message verified:', fullMessage);
+  console.log(`✅ Verified success message: ${fullMessage}`);
 }
 
 async function verifyPaymentFailureMessage(page) {
@@ -378,10 +387,28 @@ async function validatePaymentFields(page) {
   return [nameClass, cardClass, expClass, cvvClass].every(cls => cls?.includes('valid'));
 }
 
+export async function waitUntilPaymentFieldsFilledAndPlaceOrder(page) {
+  const cardHolder = page.locator('input[name="payment[cc_owner]"]'); // Update selector if needed
+  const cardNumber = page.locator('input[name="payment[cc_number]"]');
+  const expiryDate = page.locator('input[name="payment[cc_exp]"]'); // or split fields for MM/YY
+  const cvv = page.locator('input[name="payment[cc_cid]"]');
+
+  // Wait until all inputs have values
+  await expect(cardHolder).toHaveValue(/.+/, { timeout: 15000 });
+  await expect(cardNumber).toHaveValue(/\d{4} \d{4} \d{4} \d{4}/, { timeout: 15000 });
+  await expect(expiryDate).toHaveValue(/\d{2} \/ \d{2}/, { timeout: 15000 });
+  await expect(cvv).toHaveValue(/\d{3,4}/, { timeout: 15000 });
+
+  console.log('✅ All payment fields are filled');
+
+  // Now call your click function
+  await clickPlaceOrderButton(page);
+}
+
 export async function clickPlaceOrderButton(page) {
   const placeOrderBtn = page.locator('button:has-text("Place Order")').filter({
     hasNotText: 'GooglePay',
-  }).nth(1); // Adjust the index if needed
+  }).nth(1); // Adjust index if needed
 
   await placeOrderBtn.waitFor({
     state: 'visible',
@@ -390,7 +417,13 @@ export async function clickPlaceOrderButton(page) {
 
   await expect(placeOrderBtn).toBeEnabled({ timeout: 20000 });
 
-  await placeOrderBtn.click();
+  console.log('🖱️ Clicking Place Order button...');
+  
+  // Wait for navigation or success indicator
+  await Promise.all([
+    page.waitForLoadState('domcontentloaded'), // or 'networkidle' if appropriate
+    placeOrderBtn.click(),
+  ]);
 }
 
 export {
