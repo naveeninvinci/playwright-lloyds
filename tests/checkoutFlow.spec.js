@@ -76,6 +76,7 @@ if (chosenOption === 'ko_unique_5') {
   });
 }
 
+// 🔻 Screenshot on failure
 test.afterEach(async ({ page }, testInfo) => {
   if (testInfo.status !== testInfo.expectedStatus) {
     console.log(`Test failed: ${testInfo.title}`);
