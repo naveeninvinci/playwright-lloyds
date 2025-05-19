@@ -153,28 +153,17 @@ export async function handleOrderResult(page) {
   }
 }
 
-async function fillFirstVisibleInput(locator, value) {
+async function fillFirstVisible(locator, action, value) {
   const count = await locator.count();
   for (let i = 0; i < count; i++) {
     const el = locator.nth(i);
     if (await el.isVisible()) {
-      await el.fill(value);
+      if (action === 'fill') await el.fill(value);
+      if (action === 'select') await el.selectOption(value);
       return;
     }
   }
-  throw new Error('No visible input found for filling');
-}
-
-async function fillFirstVisibleSelect(locator, value) {
-  const count = await locator.count();
-  for (let i = 0; i < count; i++) {
-    const el = locator.nth(i);
-    if (await el.isVisible()) {
-      await el.selectOption(value);
-      return;
-    }
-  }
-  throw new Error('No visible select found for selecting option');
+  throw new Error(`No visible element found for action: ${action}`);
 }
 
 async function clickFirstVisibleButton(page, selector) {
@@ -229,15 +218,15 @@ console.log('Billing form exists in DOM?', !!formExists);
 
 const billingFieldset = page.locator('fieldset[data-form="billing-new-address"]');
 
-await fillFirstVisibleInput(billingFieldset.locator('input[name="firstname"]'), billingData.firstname);
-    await fillFirstVisibleInput(billingFieldset.locator('input[name="lastname"]'), billingData.lastname);
-    await fillFirstVisibleInput(billingFieldset.locator('input[name="company"]'), billingData.company);
-    await fillFirstVisibleInput(billingFieldset.locator('input[name="street[0]"]'), billingData.street1);
-    await fillFirstVisibleInput(billingFieldset.locator('input[name="street[1]"]'), billingData.street2);
-    await fillFirstVisibleSelect(billingFieldset.locator('select[name="country_id"]'), billingData.country);
-    await fillFirstVisibleInput(billingFieldset.locator('input[name="city"]'), billingData.city);
-    await fillFirstVisibleInput(billingFieldset.locator('input[name="postcode"]'), billingData.postcode);
-    await fillFirstVisibleInput(billingFieldset.locator('input[name="telephone"]'), billingData.telephone);
+await fillFirstVisible(billingFieldset.locator('input[name="firstname"]'), 'fill', billingData.firstname);
+    await fillFirstVisible(billingFieldset.locator('input[name="lastname"]'), 'fill',  billingData.lastname);
+    await fillFirstVisible(billingFieldset.locator('input[name="company"]'), 'fill',  billingData.company);
+    await fillFirstVisible(billingFieldset.locator('input[name="street[0]"]'), 'fill',  billingData.street1);
+    await fillFirstVisible(billingFieldset.locator('input[name="street[1]"]'), 'fill',  billingData.street2);
+    await fillFirstVisible(billingFieldset.locator('select[name="country_id"]'),'select',  billingData.country);
+    await fillFirstVisible(billingFieldset.locator('input[name="city"]'), 'fill',  billingData.city);
+    await fillFirstVisible(billingFieldset.locator('input[name="postcode"]'), 'fill',  billingData.postcode);
+    await fillFirstVisible(billingFieldset.locator('input[name="telephone"]'), 'fill',  billingData.telephone);
 
     console.log('✅ Filled different billing address');
     await clickFirstVisibleButton(page, 'button.action-update');
