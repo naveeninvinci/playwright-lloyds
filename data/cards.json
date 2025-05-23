@@ -16,14 +16,6 @@
     },
     {
       "name": "Naveen",
-      "number": "4147463011110059",
-      "exp": "0829",
-      "cvv": "123",
-      "label": "Valid Challenge Flow with no - Configurable responses",
-      "challengeChoice": "no"
-    },
-    {
-      "name": "Naveen",
       "number": "4149011500000527",
       "exp": "0829",
       "cvv": "123",
@@ -31,33 +23,11 @@
       "challengeChoice": "yes"
     },
     {
-      "name": "Naveen",
-      "number": "4149011500000527",
-      "exp": "0829",
-      "cvv": "123",
-      "label": "Valid Challenge Flow with 3DS no - Configurable responses",
-      "challengeChoice": "no"
-    },
-    {
       "name": "Test User",
       "number": "4761120010000492",
       "exp": "1026",
-      "cvv": "456",
+      "cvv": "123",
       "label": "Another valid card Frictionless - Fully Authenticated 3ds"
-    },
-    {
-      "name": "Invalid Card",
-      "number": "4147463011110091",
-      "exp": "0525",
-      "cvv": "999",
-      "label": "Invalid Frictionless - Not Authenticated"
-    },
-    {
-      "name": "Invalid User",
-      "number": "4265880000000015",
-      "exp": "1026",
-      "cvv": "456",
-      "label": "Another Invalid card Frictionless - Fully Authenticated 3ds"
     }
   ]
   

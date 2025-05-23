@@ -1,6 +1,6 @@
 // tests/checkoutFlow.spec.js
 import { test, expect } from '@playwright/test';
-import cardData from '../data/cards.json' assert { type: 'json' };
+import cardData from '../data/cardsInvalid.json' assert { type: 'json' };
 import productScenarios from '../data/products.json' assert { type: 'json' };
 import { shippingDetails } from '../data/shippingData.js';
 import {
@@ -62,7 +62,7 @@ if (chosenOption === 'ko_unique_5') {
   }); 
             //Function for Payment js Place Order click
             await clickPlaceOrderButton(page, card.challengeChoice);
-            await handleOrderResult(page, 'iframe'); // success expected
+            await handleOrderResult(page, 'iframe', true); // failure might occur
           } else {
             console.warn(`${card.label} — Some fields are invalid. Skipping order.`);
           }
@@ -78,7 +78,7 @@ if (chosenOption === 'ko_unique_5') {
           await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
           await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
           await fillRedirectPaymentDetails(page, card, card.challengeChoice);
-          await handleOrderResult(page, 'redirect');  // success expected
+          await handleOrderResult(page, 'redirect', true);  // failure might occur
           }
         });
   });
