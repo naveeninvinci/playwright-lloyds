@@ -131,25 +131,44 @@ async function fillRedirectPaymentDetails(page, card, choice = 'yes') {
   await handle3DSChallenge(page, choice);
 }
 
-export async function handleOrderResult(page) {
+export async function handleOrderResult(page, flowType, shouldExpectFailure = false) {
   const successMsg = page.locator('[data-ui-id="message-success"]');
-  const errorMsg = page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]');
+  // Select only the first error message to avoid strict mode violation
+  const errorMsg = page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]').first();
 
-  // Wait for either success or failure message
-  await Promise.race([
-    successMsg.waitFor({ timeout: 25000 }),
-    errorMsg.waitFor({ timeout: 25000 }),
-  ]);
+  try {
+    const race = shouldExpectFailure
+    ? Promise.race([
+        successMsg.waitFor({ timeout: 25000 }),
+        errorMsg.waitFor({ timeout: 25000 }),
+      ])
+    : successMsg.waitFor({ timeout: 25000 });
 
-  // Check which one is visible and act accordingly
+  await race;
+
   if (await successMsg.isVisible()) {
     console.log('✅ Success message appeared');
-    await verifyOrderSuccessMessage(page);
-  } else if (await errorMsg.isVisible()) {
+    if (flowType === 'iframe') {
+      await verifyIframeSuccessMessage(page);
+    } else if (flowType === 'redirect') {
+      await verifyRedirectSuccessMessage(page);
+    } else {
+      throw new Error(`Unknown flow type: ${flowType}`);
+    }
+  } else if (shouldExpectFailure && await errorMsg.isVisible()) {
     console.log('❌ Error message appeared');
-    await verifyPaymentFailureMessage(page);
+    await verifyPaymentFailureMessage(page, flowType);
   } else {
-    throw new Error('⚠️ Neither success nor failure message appeared after placing the order.');
+    throw new Error('⚠️ Expected success message, but none appeared.');
+  } 
+  } catch (error) {
+    console.error('❗️Neither success nor error message appeared within timeout. Taking screenshot...');
+    try {
+      await page.screenshot({ path: `screenshots/missing-message-${Date.now()}.png`, fullPage: true });
+    } catch (screenshotError) {
+      console.warn('⚠️ Could not take screenshot — page may already be closed.');
+    }
+    throw error;
   }
 }
 
@@ -302,65 +321,98 @@ export async function verifyBillingDetails(page, shippingData, billingData) {
   console.log(`✅ Verified billing address (${isChecked ? 'same as shipping' : 'billing details filled'})`);
 }
 
-// Reusable function to verify order success message
-export async function verifyOrderSuccessMessage(page) {
-  const messageLocator = page.locator('[data-ui-id="message-success"]');
-
-  // Wait for the full message text to appear
-  await expect(messageLocator).toContainText('Your order number with', {
-    timeout: 15000, // increase timeout to wait for full message rendering
+export async function verifyIframeSuccessMessage(page) {
+  const locator = page.locator('[data-ui-id="message-success"]');
+  await expect(locator).toHaveText('Order processed successfully by Lloyds Cardnet Payment.', {
+    timeout: 15000,
   });
-
-  const fullMessage = await messageLocator.textContent();
-  expect(fullMessage).toMatch(/Your order number with \d+ is successful/);
-
-  console.log(`✅ Verified success message: ${fullMessage}`);
+  console.log('✅ iFrame success message verified.');
 }
 
-async function verifyPaymentFailureMessage(page) {
+export async function verifyRedirectSuccessMessage(page) {
+  const locator = page.locator('[data-ui-id="message-success"]');
+  await expect(locator).toContainText('Your order number with', {
+    timeout: 15000,
+  });
+  const text = await locator.textContent();
+  expect(text).toMatch(/Your order number with \d+ is successful/);
+  console.log(`✅ Redirect success message: ${text}`);
+}
+
+export async function verifyPaymentFailureMessage(page, flowType = 'iframe') {
   const errorLocator = page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]');
 
-  // Wait for the error message to appear (up to 10 seconds)
-  await errorLocator.waitFor({ timeout: 10000 });
+  // Wait for at least one error to show
+  await expect(errorLocator.first()).toBeVisible({ timeout: 10000 });
 
-  // Check that it contains the expected failure text
-  await expect(errorLocator).toContainText('Declined: Your bank has declined the payment');
+  const allErrors = await errorLocator.allTextContents();
+  console.log('🔴 Found error messages:', allErrors);
 
-  const errorMessage = await errorLocator.textContent();
-  console.log('Payment failure message verified:', errorMessage);
-}
+  if (flowType === 'iframe') {
+    const expectedSubstrings = [
+      'Transaction declined. 3D Secure authentication failed.',
+      'There is an error with the payment. Your order',
+    ];
 
-async function handle3DSChallenge(page, choice = 'yes') {
-  const iframeSelector = 'iframe[src*="modirum"]';
-  const buttonSelector = `button#${choice}`;
-
-  const iframeElement = await page.locator(iframeSelector).elementHandle({ timeout: 10000 }).catch(() => null);
-  if (iframeElement) {
-    console.log(`🔐 3DS iframe detected, attempting "${choice}" inside iframe...`);
-    try {
-      const frame = page.frameLocator(iframeSelector);
-      await frame.locator(buttonSelector).waitFor({ timeout: 5000 });
-      await frame.locator(buttonSelector).click();
-      console.log(`✅ Clicked "${choice}" inside iframe`);
-      return;
-    } catch (e) {
-      console.warn(`⚠️ Failed to click "${choice}" in iframe:`, e.message);
+    for (const expected of expectedSubstrings) {
+      expect(allErrors.some(msg => msg.includes(expected))).toBeTruthy();
     }
+
+  } else if (flowType === 'redirect') {
+    const found = allErrors.some(msg =>
+      msg.includes('Declined: Your bank has declined the payment')
+    );
+    expect(found).toBeTruthy();
   } else {
-    console.log('ℹ️ 3DS iframe not detected, checking main page...');
+    throw new Error(`Unknown flowType: ${flowType}`);
   }
 
-  const fallbackButton = await page.locator(buttonSelector).elementHandle({ timeout: 5000 }).catch(() => null);
-  if (fallbackButton) {
+  console.log(`✅ ${flowType} payment failure messages verified.`);
+}
+
+async function waitForAllPaymentIframesToBeReady(page) {
+  const fieldConfig = [
+    { frameId: '#first-data-payment-field-name', inputSelector: 'input[name="name"]' },
+    { frameId: '#first-data-payment-field-card', inputSelector: 'input[name="card"]' },
+    { frameId: '#first-data-payment-field-exp', inputSelector: 'input[name="exp"]' },
+    { frameId: '#first-data-payment-field-cvv', inputSelector: 'input[name="cvv"]' },
+  ];
+
+  for (const { frameId, inputSelector } of fieldConfig) {
+    const frame = page.frameLocator(frameId);
+    const input = frame.locator(inputSelector);
+    await input.waitFor({
+      timeout: 10000,
+      state: 'visible',
+    });
+    console.log(`✅ Ready: ${frameId} -> ${inputSelector}`);
+  }
+}
+
+export async function handle3DSChallenge(page, choice = 'yes') {
+  const frameLocator = page.frameLocator('iframe[src*="modirum"]');
+  const buttonLocator = frameLocator.locator(`button#${choice}`);
+
+  try {
+    console.log('🔍 Waiting for 3DS iframe...');
+    await buttonLocator.waitFor({ timeout: 15000 });
+    await buttonLocator.click();
+    console.log(`✅ Clicked "${choice}" inside 3DS iframe`);
+  } catch (iframeErr) {
+    console.warn(`⚠️ Could not find 3DS iframe/button: ${iframeErr.message}`);
+    await page.screenshot({ path: `screenshots/3ds-fallback-${Date.now()}.png`, fullPage: true });
+
+    // Fallback: attempt to click button on main page (if iframe isn't used)
     try {
-      await page.locator(buttonSelector).click();
-      console.log(`✅ Clicked "${choice}" on main page`);
-    } catch (e) {
-      console.error(`❌ Failed to click "${choice}" on main page:`, e.message);
-      throw e;
+      const fallback = page.locator(`button#${choice}`);
+      await fallback.waitFor({ timeout: 15000 });
+      await fallback.click();
+      console.log(`✅ Fallback: clicked "${choice}" on main page`);
+    } catch (fallbackErr) {
+      console.error(`❌ 3DS button not found in iframe or main page`);
+      await page.screenshot({ path: `screenshots/3ds-missing-${Date.now()}.png`, fullPage: true });
+      throw fallbackErr;
     }
-  } else {
-    console.log('ℹ️ No 3DS challenge detected, continuing...');
   }
 }
 
@@ -394,7 +446,7 @@ export async function waitUntilPaymentFieldsFilledAndPlaceOrder(page) {
   await clickPlaceOrderButton(page);
 }
 
-export async function clickPlaceOrderButton(page) {
+export async function clickPlaceOrderButton(page, choice = 'yes') {
   const placeOrderBtn = page.locator('button:has-text("Place Order")').filter({
     hasNotText: 'GooglePay',
   }).nth(1); // Adjust index if needed
@@ -413,6 +465,9 @@ export async function clickPlaceOrderButton(page) {
     page.waitForLoadState('domcontentloaded'), // or 'networkidle' if appropriate
     placeOrderBtn.click(),
   ]);
+
+  // 🔐 Handle 3DS authentication
+  await handle3DSChallenge(page, choice);
 }
 
 export {
@@ -424,5 +479,6 @@ export {
   fillPaymentDetails,
   validatePaymentFields,
   fillRedirectPaymentDetails,
-  fillBillingAddressConditionally
+  fillBillingAddressConditionally,
+  waitForAllPaymentIframesToBeReady
 };

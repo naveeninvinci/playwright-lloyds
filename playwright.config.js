@@ -2,6 +2,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  workers: 1, // run tests sequentially
   testDir: './tests',
   timeout: 60 * 1000,
   retries: 0,
