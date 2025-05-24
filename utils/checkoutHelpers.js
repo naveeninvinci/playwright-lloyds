@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 async function addProductsToCart(page, productUrls) {
   for (const url of productUrls) {
@@ -301,9 +301,20 @@ export async function verifyBillingDetails(page, shippingData, billingData) {
       console.warn('⚠️ No visible billing address block found, and checkbox is checked. Skipping billing verification.');
       return;
     } else {
-      throw new Error('❌ Expected billing address block to be visible, but it is not!');
+      // Wait a little for billing to render before failing
+      await page.waitForTimeout(1000); // Short delay for DOM update
+      for (let i = 0; i < count; i++) {
+        if (await allBillingElements.nth(i).isVisible()) {
+          visibleIndex = i;
+          break;
+        }
+      }
+  
+      if (visibleIndex === -1) {
+        throw new Error('❌ Expected billing address block to be visible, but it is not – even after wait!');
+      }
     }
-  }
+  }  
 
   // STEP 3: Validate content
   const billingText = await allBillingElements.nth(visibleIndex).innerText();
@@ -322,21 +333,64 @@ export async function verifyBillingDetails(page, shippingData, billingData) {
 }
 
 export async function verifyIframeSuccessMessage(page) {
-  const locator = page.locator('[data-ui-id="message-success"]');
-  await expect(locator).toHaveText('Order processed successfully by Lloyds Cardnet Payment.', {
+  const successLocator = page.locator('[data-ui-id="message-success"]');
+  await expect(successLocator).toHaveText('Order processed successfully by Lloyds Cardnet Payment.', {
     timeout: 15000,
   });
   console.log('✅ iFrame success message verified.');
+
+  // Extract order number
+  const orderNumberLocator = page.locator('.checkout-success p span');
+  const orderNumber = (await orderNumberLocator.textContent())?.trim() || 'N/A';
+  console.log(`🧾 Order number: ${orderNumber}`);
+
+  // Capture screenshot
+  const screenshot = await page.screenshot({ fullPage: true });
+
+  // Attach to Playwright test report
+  await test.info().attach('Order Confirmation Screenshot', {
+    body: screenshot,
+    contentType: 'image/png',
+  });
+
+  // Optionally log the order number as a text attachment
+  await test.info().attach('Order Number', {
+    body: Buffer.from(orderNumber, 'utf-8'),
+    contentType: 'text/plain',
+  });
 }
 
 export async function verifyRedirectSuccessMessage(page) {
   const locator = page.locator('[data-ui-id="message-success"]');
+
   await expect(locator).toContainText('Your order number with', {
     timeout: 15000,
   });
+
   const text = await locator.textContent();
   expect(text).toMatch(/Your order number with \d+ is successful/);
+
   console.log(`✅ Redirect success message: ${text}`);
+
+  // Extract order number
+  const orderNumberLocator = page.locator('.checkout-success p span');
+  const orderNumber = (await orderNumberLocator.textContent())?.trim() || 'N/A';
+  console.log(`🧾 Order number: ${orderNumber}`);
+
+  // Capture screenshot
+  const screenshot = await page.screenshot({ fullPage: true });
+
+  // Attach to Playwright test report
+  await test.info().attach('Redirect Order Confirmation Screenshot', {
+    body: screenshot,
+    contentType: 'image/png',
+  });
+
+  // Optionally log the order number as a text attachment
+  await test.info().attach('Redirect Order Number', {
+    body: Buffer.from(orderNumber, 'utf-8'),
+    contentType: 'text/plain',
+  });
 }
 
 export async function verifyPaymentFailureMessage(page, flowType = 'iframe') {
@@ -390,29 +444,86 @@ async function waitForAllPaymentIframesToBeReady(page) {
 }
 
 export async function handle3DSChallenge(page, choice = 'yes') {
-  const frameLocator = page.frameLocator('iframe[src*="modirum"]');
-  const buttonLocator = frameLocator.locator(`button#${choice}`);
+  if (!choice) {
+    console.log('ℹ️ No 3DS challenge expected for this card – skipping');
+    return;
+  }
 
   try {
-    console.log('🔍 Waiting for 3DS iframe...');
-    await buttonLocator.waitFor({ timeout: 15000 });
-    await buttonLocator.click();
-    console.log(`✅ Clicked "${choice}" inside 3DS iframe`);
-  } catch (iframeErr) {
-    console.warn(`⚠️ Could not find 3DS iframe/button: ${iframeErr.message}`);
-    await page.screenshot({ path: `screenshots/3ds-fallback-${Date.now()}.png`, fullPage: true });
+    console.log('⏳ Waiting for possible 3DS redirect...');
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    await page.waitForTimeout(1000); // short buffer
 
-    // Fallback: attempt to click button on main page (if iframe isn't used)
-    try {
-      const fallback = page.locator(`button#${choice}`);
-      await fallback.waitFor({ timeout: 15000 });
-      await fallback.click();
-      console.log(`✅ Fallback: clicked "${choice}" on main page`);
-    } catch (fallbackErr) {
-      console.error(`❌ 3DS button not found in iframe or main page`);
-      await page.screenshot({ path: `screenshots/3ds-missing-${Date.now()}.png`, fullPage: true });
-      throw fallbackErr;
+    // Wait and re-check frame dynamically
+    const modirumFrame = await waitForModirumFrame(page, 10000);
+
+    if (modirumFrame) {
+      console.log('🔍 3DS iframe detected');
+
+      const success = await clickInFrame(modirumFrame, choice);
+      if (success) return;
+      console.warn('⚠️ Retry: frame might have detached, re-checking...');
+      
+      // Retry once more with fresh frame in case of detachment
+      const freshFrame = await waitForModirumFrame(page, 5000);
+      if (freshFrame) {
+        const retried = await clickInFrame(freshFrame, choice);
+        if (retried) return;
+      }
     }
+
+    // Fallback on main page
+    const mainButton = page.locator(`button:has-text("${choice}")`);
+    if (await mainButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await mainButton.click();
+      console.log(`✅ Clicked "${choice}" on main page`);
+      return;
+    }
+
+    console.log('ℹ️ 3DS challenge not shown – skipping');
+  } catch (err) {
+    console.error(`❌ 3DS challenge error: ${err.message}`);
+    await page.screenshot({ path: `screenshots/3ds-error-${Date.now()}.png`, fullPage: true });
+    throw err;
+  }
+}
+
+async function sleepQuietly(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForModirumFrame(page, timeout = 10000, pollInterval = 250) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const frames = page.frames();
+    const modirumFrame = frames.find(f => f.url().includes('modirum'));
+
+    if (modirumFrame) {
+      console.log(`✅ Detected modirum frame: ${modirumFrame.url()}`);
+      return modirumFrame;
+    }
+
+    await sleepQuietly(pollInterval);
+  }
+
+  console.warn(`⏱ waitForModirumFrame timed out after ${timeout}ms`);
+  return null;
+}
+
+async function clickInFrame(frame, choice) {
+  try {
+    const button = await frame.waitForSelector(`button:has-text("${choice}")`, { timeout: 15000 });
+    await button.click();
+    console.log(`✅ Clicked "${choice}" inside 3DS iframe`);
+    return true;
+  } catch (err) {
+    if (err.message.includes('Frame was detached')) {
+      console.warn('⚠️ Frame detached during click – will retry');
+    } else {
+      console.warn(`⚠️ Could not click button in iframe: ${err.message}`);
+    }
+    return false;
   }
 }
 
