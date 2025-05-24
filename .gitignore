@@ -79,3 +79,5 @@ yarn-error.log*
 
 # VSCode settings (optional)
 .vscode/
+
+echo "allure-report.zip" >> .gitignore
