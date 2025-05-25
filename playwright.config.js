@@ -7,7 +7,6 @@ export default defineConfig({
   timeout: 60 * 1000,
   retries: 0,
   use: {
-    //headless: false,
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
     screenshot: 'only-on-failure', // <- this enables screenshots on failure
