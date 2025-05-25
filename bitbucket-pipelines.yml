@@ -13,9 +13,5 @@ pipelines:
           - HEADLESS=true npx playwright test
           - npx allure generate --single-file allure-results --clean -o static-allure-report
           - ls -l static-allure-report
-          # Serve the report for 5 minutes (demo)
-          - python3 -m http.server --directory static-allure-report 8080 &
-          - echo "Serving report at http://localhost:8080 for 5 minutes"
-          - sleep 300
         artifacts:
           - static-allure-report/*
