@@ -9,6 +9,6 @@ pipelines:
           script:
             - npm ci
             - npx playwright install
-            - npx playwright test --reporter=list
+            - npx playwright test
           artifacts:
             - playwright-report/**
