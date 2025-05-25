@@ -1,3 +1,4 @@
+
 import { test, expect } from '@playwright/test';
 import cardData from '../data/cardsInvalid.json' assert { type: 'json' };
 import productScenarios from '../data/products.json' assert { type: 'json' };
