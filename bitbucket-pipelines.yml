@@ -11,5 +11,6 @@ pipelines:
           - npx playwright install --with-deps
           - HEADLESS=true npx playwright test
           - npx allure generate --single-file allure-results --clean -o static-allure-report
+          - ls -l static-allure-report
         artifacts:
-          - static-allure-report/**
+          - static-allure-report/*
