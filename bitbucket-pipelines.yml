@@ -1,15 +1,14 @@
-image: node:18
-
 pipelines:
-  default:
-    - step:
-        name: Run Playwright Tests
-        caches:
-          - node
-          - playwright
-        script:
-          - npm ci
-          - npx playwright install
-          - npx playwright test --reporter=list
-        artifacts:
-          - playwright-report/**
+  branches:
+    main:
+      - step:
+          name: Run Playwright Tests on Main
+          caches:
+            - node
+            - playwright
+          script:
+            - npm ci
+            - npx playwright install
+            - npx playwright test --reporter=list
+          artifacts:
+            - playwright-report/**
