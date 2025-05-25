@@ -10,7 +10,6 @@ pipelines:
           - npm install
           - npx playwright install --with-deps
           - HEADLESS=true npx playwright test
-          - npm install -g allure-commandline --save-dev
-          - allure generate --single-file allure-results --clean -o static-allure-report
+          - npx allure generate --single-file allure-results --clean -o static-allure-report
         artifacts:
           - static-allure-report/**
