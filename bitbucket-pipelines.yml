@@ -1,14 +1,12 @@
+image: mcr.microsoft.com/playwright:focal
+
 pipelines:
-  branches:
-    main:
-      - step:
-          name: Run Playwright Tests on Main
-          caches:
-            - node
-            - playwright
-          script:
-            - npm ci
-            - npx playwright install
-            - npx playwright test
-          artifacts:
-            - playwright-report/**
+  default:
+    - step:
+        name: Run Playwright Tests
+        caches:
+          - node
+        script:
+          - npm ci
+          - npx playwright install --with-deps
+          - npx playwright test
