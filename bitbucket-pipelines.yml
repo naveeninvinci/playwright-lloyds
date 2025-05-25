@@ -3,10 +3,11 @@ image: mcr.microsoft.com/playwright:focal
 pipelines:
   default:
     - step:
-        name: Run Playwright Tests
+        name: Run Playwright Tests and Generate Allure Report
         caches:
           - node
         script:
+          - apt-get update && apt-get install -y openjdk-11-jre-headless
           - npm install
           - npx playwright install --with-deps
           - HEADLESS=true npx playwright test
