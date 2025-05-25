@@ -7,6 +7,6 @@ pipelines:
         caches:
           - node
         script:
-          - npm ci
+          - npm install
           - npx playwright install --with-deps
           - npx playwright test
