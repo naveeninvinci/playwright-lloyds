@@ -250,8 +250,6 @@ await fillFirstVisible(billingFieldset.locator('input[name="firstname"]'), 'fill
     console.log('✅ Filled different billing address');
     await clickFirstVisibleButton(page, 'button.action-update');
 
-    // After clicking update button
-    //await verifyBillingDetails(page, billingData);
   } else {
     console.log('🟢 Keeping billing address same as shipping');
   }

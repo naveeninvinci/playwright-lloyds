@@ -1,4 +1,3 @@
-// tests/checkoutFlow.spec.js
 import { test, expect } from '@playwright/test';
 import cardData from '../data/cards.json' assert { type: 'json' };
 import productScenarios from '../data/products.json' assert { type: 'json' };
