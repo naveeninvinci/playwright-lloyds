@@ -9,4 +9,4 @@ pipelines:
         script:
           - npm install
           - npx playwright install --with-deps
-          - npx playwright test --headless
+          - HEADLESS=true npx playwright test
