@@ -131,20 +131,9 @@ async function fillRedirectPaymentDetails(page, card, choice = 'yes') {
   await handle3DSChallenge(page, choice ?? null);
 }
 
-export async function handleOrderResult(page, flowType, shouldExpectFailure = false) {
+async function expectSuccessMessage(page, flowType) {
   const successMsg = page.locator('[data-ui-id="message-success"]');
-  // Select only the first error message to avoid strict mode violation
-  const errorMsg = page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]').first();
-
-  try {
-    const race = shouldExpectFailure
-    ? Promise.race([
-        successMsg.waitFor({ timeout: 25000 }),
-        errorMsg.waitFor({ timeout: 25000 }),
-      ])
-    : successMsg.waitFor({ timeout: 25000 });
-
-  await race;
+  await successMsg.waitFor({ timeout: 25000 });
 
   if (await successMsg.isVisible()) {
     console.log('✅ Success message appeared');
@@ -155,12 +144,30 @@ export async function handleOrderResult(page, flowType, shouldExpectFailure = fa
     } else {
       throw new Error(`Unknown flow type: ${flowType}`);
     }
-  } else if (shouldExpectFailure && await errorMsg.isVisible()) {
+  } else {
+    throw new Error('⚠️ Expected success message, but none appeared.');
+  }
+}
+
+async function expectFailureMessage(page, flowType) {
+  const errorMsg = page.locator('[data-ui-id="checkout-cart-validationmessages-message-error"]').first();
+  await errorMsg.waitFor({ timeout: 25000 });
+
+  if (await errorMsg.isVisible()) {
     console.log('❌ Error message appeared');
     await verifyPaymentFailureMessage(page, flowType);
   } else {
-    throw new Error('⚠️ Expected success message, but none appeared.');
-  } 
+    throw new Error('⚠️ Expected error message, but none appeared.');
+  }
+}
+
+export async function handleOrderResult(page, flowType, shouldExpectFailure = false) {
+  try {
+    if (shouldExpectFailure) {
+      await expectFailureMessage(page, flowType);
+    } else {
+      await expectSuccessMessage(page, flowType);
+    }
   } catch (error) {
     console.error('❗️Neither success nor error message appeared within timeout. Taking screenshot...');
     try {
@@ -198,58 +205,59 @@ async function clickFirstVisibleButton(page, selector) {
   throw new Error(`No visible button found for selector: ${selector}`);
 }
 
-async function fillBillingAddressConditionally(page, billingData) {
-   // Try both possible checkbox IDs
-   const checkboxSelectors = [
-    '#billing-address-same-as-shipping-lcnetredirect',
-    '#billing-address-same-as-shipping-lcnetpaymentjs'
-  ];
+async function fillBillingAddressForRedirect(page, billingData) {
+  const checkbox = page.locator('#billing-address-same-as-shipping-lcnetredirect');
 
-  let checkbox;
-  for (const selector of checkboxSelectors) {
-    const candidate = page.locator(selector);
-    try {
-      await expect(candidate).toBeVisible({ timeout: 3000 });
-      checkbox = candidate;
-      break; // Found the first visible one
-    } catch {
-      // Not visible or not found — move on to the next
-    }
-  }
-
-  if (!checkbox) {
-    console.warn('⚠️ Billing address checkbox not found or visible.');
+  try {
+    await expect(checkbox).toBeVisible({ timeout: 3000 });
+  } catch {
+    console.warn('⚠️ Redirect billing checkbox not visible. Skipping.');
     return;
   }
 
+  await fillBillingFormIfNeeded(page, checkbox, billingData);
+}
+
+async function fillBillingAddressForPaymentJS(page, billingData) {
+  const checkbox = page.locator('#billing-address-same-as-shipping-lcnetpaymentjs');
+
+  try {
+    await expect(checkbox).toBeVisible({ timeout: 3000 });
+  } catch {
+    console.warn('⚠️ PaymentJS billing checkbox not visible. Skipping.');
+    return;
+  }
+
+  await fillBillingFormIfNeeded(page, checkbox, billingData);
+}
+
+async function fillBillingFormIfNeeded(page, checkbox, billingData) {
   const shouldUncheck = Math.random() < 0.5;
   const isChecked = await checkbox.isChecked();
 
   if (shouldUncheck && isChecked) {
     await checkbox.uncheck();
     console.log('🟡 Randomly chose: Use different billing address');
-    // Wait up to 15 seconds for the form to appear in DOM
-await page.waitForSelector('fieldset[data-form="billing-new-address"]', { state: 'attached', timeout: 15000 });
 
-    const formExists = await page.$('fieldset[data-form="billing-new-address"]');
-console.log('Billing form exists in DOM?', !!formExists);
+    await page.waitForSelector('fieldset[data-form="billing-new-address"]', {
+      state: 'attached',
+      timeout: 15000
+    });
 
+    const billingFieldset = page.locator('fieldset[data-form="billing-new-address"]');
 
-const billingFieldset = page.locator('fieldset[data-form="billing-new-address"]');
-
-await fillFirstVisible(billingFieldset.locator('input[name="firstname"]'), 'fill', billingData.firstname);
-    await fillFirstVisible(billingFieldset.locator('input[name="lastname"]'), 'fill',  billingData.lastname);
-    await fillFirstVisible(billingFieldset.locator('input[name="company"]'), 'fill',  billingData.company);
-    await fillFirstVisible(billingFieldset.locator('input[name="street[0]"]'), 'fill',  billingData.street1);
-    await fillFirstVisible(billingFieldset.locator('input[name="street[1]"]'), 'fill',  billingData.street2);
-    await fillFirstVisible(billingFieldset.locator('select[name="country_id"]'),'select',  billingData.country);
-    await fillFirstVisible(billingFieldset.locator('input[name="city"]'), 'fill',  billingData.city);
-    await fillFirstVisible(billingFieldset.locator('input[name="postcode"]'), 'fill',  billingData.postcode);
-    await fillFirstVisible(billingFieldset.locator('input[name="telephone"]'), 'fill',  billingData.telephone);
+    await fillFirstVisible(billingFieldset.locator('input[name="firstname"]'), 'fill', billingData.firstname);
+    await fillFirstVisible(billingFieldset.locator('input[name="lastname"]'), 'fill', billingData.lastname);
+    await fillFirstVisible(billingFieldset.locator('input[name="company"]'), 'fill', billingData.company);
+    await fillFirstVisible(billingFieldset.locator('input[name="street[0]"]'), 'fill', billingData.street1);
+    await fillFirstVisible(billingFieldset.locator('input[name="street[1]"]'), 'fill', billingData.street2);
+    await fillFirstVisible(billingFieldset.locator('select[name="country_id"]'), 'select', billingData.country);
+    await fillFirstVisible(billingFieldset.locator('input[name="city"]'), 'fill', billingData.city);
+    await fillFirstVisible(billingFieldset.locator('input[name="postcode"]'), 'fill', billingData.postcode);
+    await fillFirstVisible(billingFieldset.locator('input[name="telephone"]'), 'fill', billingData.telephone);
 
     console.log('✅ Filled different billing address');
     await clickFirstVisibleButton(page, 'button.action-update');
-
   } else {
     console.log('🟢 Keeping billing address same as shipping');
   }
@@ -589,6 +597,7 @@ export {
   fillPaymentDetails,
   validatePaymentFields,
   fillRedirectPaymentDetails,
-  fillBillingAddressConditionally,
+  fillBillingAddressForPaymentJS,
+  fillBillingAddressForRedirect,
   waitForAllPaymentIframesToBeReady
 };
