@@ -453,7 +453,7 @@ export async function handle3DSChallenge(page, choice = 'yes') {
     await page.waitForTimeout(1000); // short buffer
 
     // Wait and re-check frame dynamically
-    const modirumFrame = await waitForModirumFrame(page, 10000);
+    const modirumFrame = await waitForModirumFrame(page, 20000);
 
     if (modirumFrame) {
       console.log('🔍 3DS iframe detected');

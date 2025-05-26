@@ -41,32 +41,32 @@ if (chosenOption === 'ko_unique_5') {
 }
     });
       
-  //       test(`JS Checkout: iFrame randomly selectedCard`, async ({ page }) => {
-  //         for (const card of selectedCard) {
-  //         console.log(`Running test for card: ${card.label}`);
+        test(`JS Checkout: iFrame randomly selectedCard`, async ({ page }) => {
+          for (const card of selectedCard) {
+          console.log(`Running test for card: ${card.label}`);
 
-  //         await selectLloydsCardnetPaymentJs(page);
-  //         await fillBillingAddressConditionally(page, shippingDetails.billing);
-  //         await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
-  //         await waitForAllPaymentIframesToBeReady(page);
-  //         await fillPaymentDetails(page, card);
-  //         const allValid = await validatePaymentFields(page);
+          await selectLloydsCardnetPaymentJs(page);
+          await fillBillingAddressConditionally(page, shippingDetails.billing);
+          await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
+          await waitForAllPaymentIframesToBeReady(page);
+          await fillPaymentDetails(page, card);
+          const allValid = await validatePaymentFields(page);
 
-  //         if (allValid) {
-  //           console.log(`${card.label} — All payment fields are valid. Placing order...`);
-  //           // Wait for the spinner to disappear before proceeding
-  //           await page.locator('.loading-mask, .spinner, .loading-indicator').waitFor({
-  //           state: 'hidden',
-  //           timeout: 10000,
-  // }); 
-  //           //Function for Payment js Place Order click
-  //           await clickPlaceOrderButton(page, card.challengeChoice);
-  //           await handleOrderResult(page, 'iframe'); // success expected
-  //         } else {
-  //           console.warn(`${card.label} — Some fields are invalid. Skipping order.`);
-  //         }
-  //       }
-  //       });
+          if (allValid) {
+            console.log(`${card.label} — All payment fields are valid. Placing order...`);
+            // Wait for the spinner to disappear before proceeding
+            await page.locator('.loading-mask, .spinner, .loading-indicator').waitFor({
+            state: 'hidden',
+            timeout: 10000,
+  }); 
+            //Function for Payment js Place Order click
+            await clickPlaceOrderButton(page, card.challengeChoice);
+            await handleOrderResult(page, 'iframe'); // success expected
+          } else {
+            console.warn(`${card.label} — Some fields are invalid. Skipping order.`);
+          }
+        }
+        });
       
         test(`Redirect Checkout: randomly selectedCard`, async ({ page }) => {
           for (const card of selectedCard) {

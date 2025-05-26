@@ -1,13 +1,15 @@
 // playwright.config.js
 import { defineConfig } from '@playwright/test';
 
+const isHeadless = process.env.HEADLESS !== 'false';
+
 export default defineConfig({
   workers: 1, // run tests sequentially
   testDir: './tests',
   timeout: 60 * 1000,
   retries: 0,
   use: {
-    //headless: false,
+    headless: isHeadless,
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
     screenshot: 'only-on-failure', // <- this enables screenshots on failure
