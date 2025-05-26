@@ -11,7 +11,8 @@ import {
   fillPaymentDetails,
   validatePaymentFields,
   fillRedirectPaymentDetails,
-  fillBillingAddressConditionally,
+  fillBillingAddressForPaymentJS,
+  fillBillingAddressForRedirect,
   verifyBillingDetails,
   clickPlaceOrderButton,
   handleOrderResult,
@@ -46,7 +47,7 @@ if (chosenOption === 'ko_unique_5') {
           console.log(`Running test for card: ${card.label}`);
 
           await selectLloydsCardnetPaymentJs(page);
-          await fillBillingAddressConditionally(page, shippingDetails.billing);
+          await fillBillingAddressForPaymentJS(page, shippingDetails.billing);
           await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
           await waitForAllPaymentIframesToBeReady(page);
           await fillPaymentDetails(page, card);
@@ -72,7 +73,7 @@ if (chosenOption === 'ko_unique_5') {
           for (const card of selectedCard) {
             console.log(`Running test for Redirect card: ${card.label}`);
           await selectLloydsCardnetConnect(page);
-          await fillBillingAddressConditionally(page, shippingDetails.billing);
+          await fillBillingAddressForRedirect(page, shippingDetails.billing);
           await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
           await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
           await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });

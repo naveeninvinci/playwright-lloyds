@@ -6,8 +6,8 @@ async function addProductsToCart(page, productUrls) {
     await page.getByRole('button', { name: 'Add to Cart' }).click();
     await page.waitForTimeout(1000); // Slight delay between additions
   }
-  // Go to cart after adding products
-  await page.getByRole('link', { name: 'shopping cart' }).click();
+  // Option 1: Click the first matching "shopping cart" link
+  await page.getByRole('link', { name: 'shopping cart' }).first().click();
   await page.waitForSelector('button[data-role="proceed-to-checkout"]', { timeout: 20000 });
 }
 
@@ -18,19 +18,27 @@ async function proceedToCheckout(page) {
   await expect(checkoutBtn).toBeVisible({ timeout: 10000 });
   await expect(checkoutBtn).toBeEnabled({ timeout: 10000 });
 
+  const currentURL = page.url();
+
   try {
     await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }),
-      checkoutBtn.click({ timeout: 5000 }),
+      checkoutBtn.click({ timeout: 15000 }),
     ]);
   } catch (e) {
-    console.warn('Standard click failed. Trying JS click...');
+    console.warn('⚠️ Standard click+navigation failed, trying fallback...');
+
     const handle = await checkoutBtn.elementHandle();
     await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }),
-      page.evaluate(el => el && el.click(), handle),
+      page.evaluate(el => el && el.click({ timeout: 15000 }), handle),
     ]);
   }
+
+  // If no real navigation happened, wait for URL to change manually (e.g. via AJAX)
+  await page.waitForFunction(
+    prev => location.href !== prev,
+    currentURL,
+    { timeout: 15000 }
+  );
 
   await expect(page).toHaveURL(/checkout\/.*/, { timeout: 15000 });
 }
@@ -215,7 +223,7 @@ async function fillBillingAddressForRedirect(page, billingData) {
     return;
   }
 
-  await fillBillingFormIfNeeded(page, checkbox, billingData);
+  await fillBillingFormRandomly(page, checkbox, billingData);
 }
 
 async function fillBillingAddressForPaymentJS(page, billingData) {
@@ -228,10 +236,10 @@ async function fillBillingAddressForPaymentJS(page, billingData) {
     return;
   }
 
-  await fillBillingFormIfNeeded(page, checkbox, billingData);
+  await fillBillingFormRandomly(page, checkbox, billingData);
 }
 
-async function fillBillingFormIfNeeded(page, checkbox, billingData) {
+async function fillBillingFormRandomly(page, checkbox, billingData) {
   const shouldUncheck = Math.random() < 0.5;
   const isChecked = await checkbox.isChecked();
 
@@ -428,6 +436,20 @@ export async function verifyPaymentFailureMessage(page, flowType = 'iframe') {
   }
 
   console.log(`✅ ${flowType} payment failure messages verified.`);
+
+  // Take and attach screenshot
+  const screenshot = await page.screenshot({ fullPage: true });
+
+  await test.info().attach(`${flowType} Payment Failure Screenshot`, {
+    body: screenshot,
+    contentType: 'image/png',
+  });
+
+  // Optionally attach all error messages as a text file
+  await test.info().attach(`${flowType} Payment Errors`, {
+    body: Buffer.from(allErrors.join('\n'), 'utf-8'),
+    contentType: 'text/plain',
+  });
 }
 
 async function waitForAllPaymentIframesToBeReady(page) {
