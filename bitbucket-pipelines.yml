@@ -14,4 +14,5 @@ pipelines:
           - npx allure generate --single-file allure-results --clean -o static-allure-report
           - ls -l static-allure-report
         artifacts:
+          - test-results/*
           - static-allure-report/*

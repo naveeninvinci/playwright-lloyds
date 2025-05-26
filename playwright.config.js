@@ -18,6 +18,7 @@ export default defineConfig({
   },
   reporter: [
     ['list'], // Keep console output
-    ['allure-playwright'] // Add Allure reporter
+    ['allure-playwright'], // Add Allure reporter
+    ['junit', { outputFile: 'test-results/results.xml' }]
   ],
 });
