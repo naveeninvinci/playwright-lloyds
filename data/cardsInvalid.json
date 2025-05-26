@@ -4,14 +4,16 @@
     "number": "4147463011110091",
     "exp": "0525",
     "cvv": "456",
-    "label": "Invalid Frictionless - Not Authenticated"
+    "label": "Invalid Frictionless - Not Authenticated",
+    "challengeChoice": null
   },
   {
     "name": "Invalid User",
     "number": "4265880000000015",
     "exp": "1026",
     "cvv": "456",
-    "label": "Another Invalid card Frictionless - Fully Authenticated 3ds"
+    "label": "Another Invalid card Frictionless - Fully Authenticated 3ds",
+    "challengeChoice": null
   },
   {
     "name": "Naveen",

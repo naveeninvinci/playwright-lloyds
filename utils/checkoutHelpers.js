@@ -128,7 +128,7 @@ async function fillRedirectPaymentDetails(page, card, choice = 'yes') {
   console.log('Submitted card details');
 
   // 🔐 Handle 3DS authentication
-  await handle3DSChallenge(page, choice);
+  await handle3DSChallenge(page, choice ?? null);
 }
 
 export async function handleOrderResult(page, flowType, shouldExpectFailure = false) {
@@ -442,10 +442,11 @@ async function waitForAllPaymentIframesToBeReady(page) {
 }
 
 export async function handle3DSChallenge(page, choice = 'yes') {
-  if (!choice) {
-    console.log('ℹ️ No 3DS challenge expected for this card – skipping');
-    return;
-  }
+  // explicitly skip when undefined
+if (choice === undefined || choice === null || choice === '') {
+  console.log('ℹ️ No 3DS challenge expected for this card – skipping');
+  return;
+}
 
   try {
     console.log('⏳ Waiting for possible 3DS redirect...');
@@ -471,7 +472,7 @@ export async function handle3DSChallenge(page, choice = 'yes') {
     }
 
     // Fallback on main page
-    const mainButton = page.locator(`button:has-text("${choice}")`);
+    const mainButton = page.locator(`button:has-text("${choice.trim().toLowerCase()}")`);
     if (await mainButton.isVisible({ timeout: 5000 }).catch(() => false)) {
       await mainButton.click();
       console.log(`✅ Clicked "${choice}" on main page`);
@@ -576,7 +577,7 @@ export async function clickPlaceOrderButton(page, choice = 'yes') {
   ]);
 
   // 🔐 Handle 3DS authentication
-  await handle3DSChallenge(page, choice);
+  await handle3DSChallenge(page, choice ?? null);
 }
 
 export {

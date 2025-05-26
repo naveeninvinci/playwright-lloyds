@@ -4,7 +4,8 @@
       "number": "4147463011110083",
       "exp": "0829",
       "cvv": "123",
-      "label": "Valid Frictionless - Fully Authenticated"
+      "label": "Valid Frictionless - Fully Authenticated",
+      "challengeChoice": null
     },
     {
       "name": "Naveen",
@@ -27,7 +28,8 @@
       "number": "4761120010000492",
       "exp": "1026",
       "cvv": "123",
-      "label": "Another valid card Frictionless - Fully Authenticated 3ds"
+      "label": "Another valid card Frictionless - Fully Authenticated 3ds",
+      "challengeChoice": null
     }
   ]
   

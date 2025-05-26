@@ -69,18 +69,18 @@ if (chosenOption === 'ko_unique_5') {
         }
         });
       
-        // test(`Redirect Checkout: randomly selectedCard`, async ({ page }) => {
-        //   for (const card of selectedCard) {
-        //     console.log(`Running test for Redirect card: ${card.label}`);
-        //   await selectLloydsCardnetConnect(page);
-        //   await fillBillingAddressConditionally(page, shippingDetails.billing);
-        //   await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
-        //   await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
-        //   await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
-        //   await fillRedirectPaymentDetails(page, card, card.challengeChoice);
-        //   await handleOrderResult(page, 'redirect', true);  // failure might occur
-        //   }
-        // });
+        test(`Redirect Checkout: randomly selectedCard`, async ({ page }) => {
+          for (const card of selectedCard) {
+            console.log(`Running test for Redirect card: ${card.label}`);
+          await selectLloydsCardnetConnect(page);
+          await fillBillingAddressConditionally(page, shippingDetails.billing);
+          await verifyBillingDetails(page, shippingDetails.shipping, shippingDetails.billing);
+          await page.locator('button:has-text("Place Order"):not([disabled])').first().click();
+          await page.waitForSelector('input#cardNumber, #select2-brandTypeSelect-container', { timeout: 20000 });
+          await fillRedirectPaymentDetails(page, card, card.challengeChoice);
+          await handleOrderResult(page, 'redirect', true);  // failure might occur
+          }
+        });
   });
 
 // 🔻 Screenshot on failure
